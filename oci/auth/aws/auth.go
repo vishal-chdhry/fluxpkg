@@ -21,30 +21,28 @@ import (
 	"encoding/base64"
 	"errors"
 	"fmt"
-	"regexp"
 	"strings"
 	"sync"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/service/ecr"
+	ecrcredentialhelper "github.com/awslabs/amazon-ecr-credential-helper/ecr-login/api"
 	"github.com/google/go-containerregistry/pkg/authn"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 
 	"github.com/fluxcd/pkg/oci"
 )
 
-var registryPartRe = regexp.MustCompile(`([0-9+]*).dkr.ecr.([^/.]*)\.(amazonaws\.com[.cn]*)`)
-
 // ParseRegistry returns the AWS account ID and region and `true` if
 // the image registry/repository is hosted in AWS's Elastic Container Registry,
 // otherwise empty strings and `false`.
 func ParseRegistry(registry string) (accountId, awsEcrRegion string, ok bool) {
-	registryParts := registryPartRe.FindAllStringSubmatch(registry, -1)
-	if len(registryParts) < 1 || len(registryParts[0]) < 3 {
+	reg, err := ecrcredentialhelper.ExtractRegistry(registry)
+	if err != nil {
 		return "", "", false
 	}
-	return registryParts[0][1], registryParts[0][2], true
+	return reg.ID, reg.Region, true
 }
 
 // Client is a AWS ECR client which can log into the registry and return
